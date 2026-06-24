@@ -21,15 +21,28 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import type { PlanTier } from '@/lib/ai/tiers'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-})
+// Lazily initialized to avoid build-time failure when env vars aren't set
+let _stripe: Stripe | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _supabaseAdmin: any = null
 
-// Service-role client — bypasses RLS, safe for server-only webhook handler
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getStripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' })
+  }
+  return _stripe
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getSupabaseAdmin(): any {
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+  return _supabaseAdmin
+}
 
 /* ---- Price ID → Plan Tier Mapping ----
    Add your actual Stripe price IDs here.
@@ -59,7 +72,7 @@ export async function POST(request: NextRequest) {
   // Verify the webhook came from Stripe
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
@@ -76,7 +89,7 @@ export async function POST(request: NextRequest) {
 
       /* ---- New subscription or checkout completed ---- */
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.CheckoutSession
+        const session = event.data.object as Stripe.Checkout.Session
         await handleCheckoutCompleted(session)
         break
       }
@@ -124,7 +137,7 @@ export async function POST(request: NextRequest) {
  * Links the Stripe customer ID to a Supabase user on first purchase.
  * The user's email from Stripe is matched to profiles.
  */
-async function handleCheckoutCompleted(session: Stripe.CheckoutSession) {
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (session.mode !== 'subscription') return
 
   const customerId     = session.customer as string
@@ -137,7 +150,7 @@ async function handleCheckoutCompleted(session: Stripe.CheckoutSession) {
   }
 
   // Find the Supabase user by email
-  const { data: profile } = await supabaseAdmin
+  const { data: profile } = await getSupabaseAdmin()
     .from('profiles')
     .select('id')
     .eq('email', customerEmail)
@@ -149,11 +162,11 @@ async function handleCheckoutCompleted(session: Stripe.CheckoutSession) {
   }
 
   // Fetch subscription to get price ID and status
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+  const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
   const priceId = subscription.items.data[0]?.price.id ?? ''
   const tier    = priceToTier(priceId)
 
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from('profiles')
     .update({
       stripe_customer_id:    customerId,
@@ -176,7 +189,7 @@ async function handleSubscriptionUpsert(subscription: Stripe.Subscription) {
   const tier       = priceToTier(priceId)
   const status     = subscription.status
 
-  const { error } = await supabaseAdmin
+  const { error } = await getSupabaseAdmin()
     .from('profiles')
     .update({
       stripe_subscription_id: subscription.id,
@@ -199,7 +212,7 @@ async function handleSubscriptionUpsert(subscription: Stripe.Subscription) {
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string
 
-  const { error } = await supabaseAdmin
+  const { error } = await getSupabaseAdmin()
     .from('profiles')
     .update({
       plan_tier:           'free',
@@ -222,7 +235,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string
 
-  const { error } = await supabaseAdmin
+  const { error } = await getSupabaseAdmin()
     .from('profiles')
     .update({ subscription_status: 'past_due' })
     .eq('stripe_customer_id', customerId)

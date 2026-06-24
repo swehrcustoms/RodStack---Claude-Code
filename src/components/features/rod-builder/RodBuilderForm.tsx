@@ -27,15 +27,30 @@ const EMPTY_FORM: RodFormData = {
   build_notes: '',
 }
 
+interface Customer { id: string; name: string }
+
 interface RodBuilderFormProps {
   initialData?: Partial<RodFormData>
   buildId?: string
+  customers?: Customer[]
+  initialCustomerId?: string
+  initialSalePrice?: string
+  initialDueDate?: string
+  initialPriority?: string
 }
 
-export function RodBuilderForm({ initialData, buildId }: RodBuilderFormProps) {
+export function RodBuilderForm({
+  initialData, buildId, customers = [],
+  initialCustomerId = '', initialSalePrice = '',
+  initialDueDate = '', initialPriority = 'standard',
+}: RodBuilderFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [form, setForm] = useState<RodFormData>({ ...EMPTY_FORM, ...initialData })
+  const [customerId, setCustomerId] = useState(initialCustomerId)
+  const [salePrice, setSalePrice] = useState(initialSalePrice)
+  const [dueDate, setDueDate] = useState(initialDueDate)
+  const [priority, setPriority] = useState(initialPriority)
   const [errors, setErrors] = useState<Partial<Record<keyof RodFormData, string>>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -48,6 +63,10 @@ export function RodBuilderForm({ initialData, buildId }: RodBuilderFormProps) {
 
   function handleReset() {
     setForm({ ...EMPTY_FORM })
+    setCustomerId('')
+    setSalePrice('')
+    setDueDate('')
+    setPriority('standard')
     setErrors({})
     setSaveError(null)
   }
@@ -62,11 +81,16 @@ export function RodBuilderForm({ initialData, buildId }: RodBuilderFormProps) {
     setSaveError(null)
 
     startTransition(async () => {
-      const result = await saveRodBuild(form, buildId)
+      const result = await saveRodBuild(form, buildId, {
+        customer_id: customerId || null,
+        sale_price: salePrice ? parseFloat(salePrice) : null,
+        due_date: dueDate || null,
+        priority: priority || 'standard',
+      })
       if (result.error) {
         setSaveError(result.error)
       } else {
-        router.push('/builds')
+        router.push('/build-queue')
         router.refresh()
       }
     })
@@ -113,6 +137,61 @@ export function RodBuilderForm({ initialData, buildId }: RodBuilderFormProps) {
                 value={form.blank_material}
                 onChange={(e) => set('blank_material', e.target.value)}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Customer & Order */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Customer & Order</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2 space-y-4">
+            {customers.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-300">Customer</label>
+                <select
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                  className="rounded-md border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2 text-sm outline-none focus:border-amber-500"
+                >
+                  <option value="">— No customer —</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                label="Sale Price ($)"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={salePrice}
+                onChange={(e) => setSalePrice(e.target.value)}
+                hint="Optional"
+              />
+              <Input
+                label="Due Date"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                hint="Optional"
+              />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-300">Priority</label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="rounded-md border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2 text-sm outline-none focus:border-amber-500 h-9"
+                >
+                  <option value="standard">Standard</option>
+                  <option value="rush">RUSH</option>
+                  <option value="vip">VIP</option>
+                </select>
+              </div>
             </div>
           </CardContent>
         </Card>

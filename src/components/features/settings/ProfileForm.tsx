@@ -23,7 +23,8 @@ export function ProfileForm({ userId, initialDisplayName, email }: ProfileFormPr
 
     startTransition(async () => {
       const supabase = createClient()
-      const { error: upsertError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: upsertError } = await (supabase as any)
         .from('profiles')
         .upsert({ id: userId, display_name: displayName.trim() || null })
 

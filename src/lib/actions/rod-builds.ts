@@ -5,8 +5,15 @@ import { createServerClient } from '@/lib/supabase/server'
 import { formDataToDbPayload } from '@/lib/rod/transforms'
 import type { RodFormData } from '@/types/rod'
 
+interface SaveExtras {
+  customer_id?: string | null
+  sale_price?: number | null
+  due_date?: string | null
+  priority?: string
+}
+
 /** Save (create or update) a rod build */
-export async function saveRodBuild(form: RodFormData, buildId?: string) {
+export async function saveRodBuild(form: RodFormData, buildId?: string, extras?: SaveExtras) {
   const supabase = createServerClient()
 
   const {
@@ -15,7 +22,13 @@ export async function saveRodBuild(form: RodFormData, buildId?: string) {
 
   if (!user) return { error: 'Not authenticated.' }
 
-  const payload = formDataToDbPayload(form, user.id)
+  const payload = {
+    ...formDataToDbPayload(form, user.id),
+    ...(extras?.customer_id !== undefined ? { customer_id: extras.customer_id || null } : {}),
+    ...(extras?.sale_price !== undefined ? { sale_price: extras.sale_price } : {}),
+    ...(extras?.due_date !== undefined ? { due_date: extras.due_date || null } : {}),
+    ...(extras?.priority !== undefined ? { priority: extras.priority } : {}),
+  }
 
   let result
   if (buildId) {
@@ -33,6 +46,7 @@ export async function saveRodBuild(form: RodFormData, buildId?: string) {
   if (result.error) return { error: result.error.message }
 
   revalidatePath('/builds')
+  revalidatePath('/build-queue')
   revalidatePath('/dashboard')
 
   return { data: result.data }

@@ -46,7 +46,7 @@ export default async function CostingPage() {
 
   const builds = (buildsResult.data ?? []) as Pick<RodBuild, 'id' | 'name' | 'rod_length' | 'power' | 'action'>[]
   const costs = (costsResult.data ?? []) as BuildCostRow[]
-  const inventory = inventoryResult.data ?? []
+  const inventory = (inventoryResult.data ?? []) as Array<{ unit_cost: number; quantity: number }>
 
   const inventoryValue = inventory.reduce((sum, i) => sum + i.unit_cost * i.quantity, 0)
   const totalLabor = costs.reduce((sum, c) => sum + c.labor_cost, 0)

@@ -15,11 +15,12 @@ export default async function SettingsPage() {
   if (!user) return null
 
   const supabase = createServerClient()
-  const { data: profile } = await supabase
+  const { data: profileRaw } = await supabase
     .from('profiles')
     .select('display_name, created_at')
     .eq('id', user.id)
     .maybeSingle()
+  const profile = profileRaw as { display_name: string | null; created_at: string } | null
 
   return (
     <div className="space-y-8 max-w-2xl">
