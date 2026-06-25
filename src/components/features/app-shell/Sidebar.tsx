@@ -15,6 +15,7 @@ import {
   Settings,
   UserCog,
   Star,
+  Tag,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -23,6 +24,7 @@ const WORKSHOP_NAV = [
   { label: 'Build Queue',   href: '/build-queue',   icon: ListOrdered     },
   { label: 'Time Tracking', href: '/time-tracking', icon: Clock           },
   { label: 'Blank Library', href: '/blank-library', icon: BookOpen        },
+  { label: 'Label Studio',  href: '/label-studio',  icon: Tag             },
 ]
 
 const BUSINESS_NAV = [
