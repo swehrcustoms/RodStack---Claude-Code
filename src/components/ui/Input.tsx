@@ -1,104 +1,73 @@
+'use client'
+
 import { forwardRef, useId } from 'react'
+import type { InputHTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
-/* ============================================================
-   Input — labelled text field with addon support
-   ============================================================ */
-
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> {
   label?: string
   hint?: string
   error?: string
-  /** Icon or text prepended inside the input */
-  prefix?: React.ReactNode
-  /** Icon or text appended inside the input */
-  suffix?: React.ReactNode
-  /** Full-width block layout */
-  block?: boolean
+  prefix?: ReactNode
+  suffix?: ReactNode
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  (
-    {
-      label,
-      hint,
-      error,
-      prefix,
-      suffix,
-      block = true,
-      className,
-      id: externalId,
-      disabled,
-      ...props
-    },
-    ref
-  ) => {
+  ({ label, hint, error, prefix, suffix, className, id: externalId, ...props }, ref) => {
     const generatedId = useId()
     const id = externalId ?? generatedId
     const hasError = Boolean(error)
 
     return (
-      <div className={cn('flex flex-col gap-1.5', block && 'w-full')}>
+      <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label
-            htmlFor={id}
-            className="text-sm font-medium text-text-primary"
-          >
+          <label htmlFor={id} className="text-sm font-medium text-slate-300">
             {label}
             {props.required && (
-              <span className="ml-0.5 text-danger" aria-hidden="true">*</span>
+              <span className="ml-0.5 text-red-400" aria-hidden="true">*</span>
             )}
           </label>
         )}
 
-        <div className={cn('relative flex items-center', block && 'w-full')}>
+        <div className="relative flex items-center w-full">
           {prefix && (
-            <div className="absolute left-3 flex items-center text-text-tertiary pointer-events-none select-none">
+            <div className="absolute left-3 flex items-center text-slate-500 pointer-events-none">
               {prefix}
             </div>
           )}
-
           <input
             ref={ref}
             id={id}
-            disabled={disabled}
             aria-invalid={hasError}
-            aria-describedby={
-              error ? `${id}-error` : hint ? `${id}-hint` : undefined
-            }
+            aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
             className={cn(
-              // Base
-              'h-9 w-full rounded-md border bg-surface-base px-3 text-sm text-text-primary',
-              'placeholder:text-text-tertiary',
-              'interactive',
-              // Border states
+              'h-9 w-full rounded-md border bg-slate-900 px-3 text-sm text-slate-100',
+              'placeholder:text-slate-600 transition-colors duration-150',
+              'focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent',
               hasError
-                ? 'border-border-danger focus-visible:border-border-danger focus-visible:shadow-[0_0_0_3px_rgba(239,68,68,0.2)]'
-                : 'border-border focus-visible:border-brand-500 focus-visible:shadow-[var(--focus-ring)]',
-              // Disabled
-              'disabled:bg-surface-sunken disabled:text-text-disabled disabled:cursor-not-allowed',
-              // Padding adjustments for addons
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-slate-700 hover:border-slate-600',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
               prefix && 'pl-9',
               suffix && 'pr-9',
               className
             )}
             {...props}
           />
-
           {suffix && (
-            <div className="absolute right-3 flex items-center text-text-tertiary pointer-events-none select-none">
+            <div className="absolute right-3 flex items-center text-slate-500 pointer-events-none">
               {suffix}
             </div>
           )}
         </div>
 
         {error && (
-          <p id={`${id}-error`} className="text-xs text-danger" role="alert">
+          <p id={`${id}-error`} className="text-xs text-red-400" role="alert">
             {error}
           </p>
         )}
         {!error && hint && (
-          <p id={`${id}-hint`} className="text-xs text-text-tertiary">
+          <p id={`${id}-hint`} className="text-xs text-slate-500">
             {hint}
           </p>
         )}
@@ -107,59 +76,3 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   }
 )
 Input.displayName = 'Input'
-
-/* ============================================================
-   Textarea — same API as Input but multiline
-   ============================================================ */
-export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string
-  hint?: string
-  error?: string
-  block?: boolean
-}
-
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, hint, error, block = true, className, id: externalId, disabled, ...props }, ref) => {
-    const generatedId = useId()
-    const id = externalId ?? generatedId
-    const hasError = Boolean(error)
-
-    return (
-      <div className={cn('flex flex-col gap-1.5', block && 'w-full')}>
-        {label && (
-          <label htmlFor={id} className="text-sm font-medium text-text-primary">
-            {label}
-            {props.required && <span className="ml-0.5 text-danger" aria-hidden="true">*</span>}
-          </label>
-        )}
-
-        <textarea
-          ref={ref}
-          id={id}
-          disabled={disabled}
-          aria-invalid={hasError}
-          aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-          className={cn(
-            'min-h-[80px] w-full rounded-md border bg-surface-base px-3 py-2 text-sm text-text-primary',
-            'placeholder:text-text-tertiary resize-y',
-            'interactive',
-            hasError
-              ? 'border-border-danger focus-visible:border-border-danger focus-visible:shadow-[0_0_0_3px_rgba(239,68,68,0.2)]'
-              : 'border-border focus-visible:border-brand-500 focus-visible:shadow-[var(--focus-ring)]',
-            'disabled:bg-surface-sunken disabled:text-text-disabled disabled:cursor-not-allowed',
-            className
-          )}
-          {...props}
-        />
-
-        {error && (
-          <p id={`${id}-error`} className="text-xs text-danger" role="alert">{error}</p>
-        )}
-        {!error && hint && (
-          <p id={`${id}-hint`} className="text-xs text-text-tertiary">{hint}</p>
-        )}
-      </div>
-    )
-  }
-)
-Textarea.displayName = 'Textarea'
